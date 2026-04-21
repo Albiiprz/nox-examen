@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Teacher {
+  id           String           @id @default(cuid())
+  username     String           @unique
+  passwordHash String
+  displayName  String
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  exams        Exam[]
+  sessions     TeacherSession[]
+}
+
+model TeacherSession {
+  id        String   @id @default(cuid())
+  teacherId String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  teacher   Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
+}
+
+model Exam {
+  id          String      @id @default(cuid())
+  teacherId   String
+  title       String
+  house       String
+  year        String
+  status      String      @default("BORRADOR")
+  version     Int         @default(1)
+  publicToken String?     @unique
+  publishedAt DateTime?
+  closedAt    DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  teacher     Teacher     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  questions   Question[]
+  submissions Submission[]
+
+  @@index([teacherId])
+}
+
+model Question {
+  id         String       @id @default(cuid())
+  examId      String
+  position    Int
+  type        String
+  prompt      String
+  isRequired  Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  exam        Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
+  options     Option[]
+  answers     Answer[]
+
+  @@index([examId])
+  @@index([examId, position])
+}
+
+model Option {
+  id         String   @id @default(cuid())
+  questionId String
+  position   Int
+  text       String
+  isCorrect  Boolean  @default(false)
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+}
+
+model Submission {
+  id                 String           @id @default(cuid())
+  examId              String
+  studentName         String
+  studentHouse        String
+  studentYear         String
+  status              String           @default("ENVIADO")
+  scoreTest           Float
+  scoreDevAdjustment  Float            @default(0)
+  scoreFinal          Float
+  submittedAt         DateTime
+  createdAt           DateTime         @default(now())
+  exam                Exam             @relation(fields: [examId], references: [id], onDelete: Cascade)
+  answers             Answer[]
+
+  @@unique([examId, studentName, studentHouse, studentYear])
+  @@index([examId])
+}
+
+model Answer {
+  id                String     @id @default(cuid())
+  submissionId      String
+  questionId        String
+  selectedOptionIds String?
+  textAnswer        String?
+  autoScore         Float?
+  createdAt         DateTime   @default(now())
+  submission        Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  question          Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@index([questionId])
+}
